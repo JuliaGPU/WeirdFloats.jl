@@ -67,7 +67,7 @@ julia> @device_code dir="fp8" @roc kernel_sr(A, B); bitstring(AMDGPU.@allowscala
 
 All seeds are fixed: the result of calling the kernel multiple times is always the same.
 
-```
+```julia-repl
 julia> @inbounds function kernel_sr(A, B)
            v = reinterpret(WeirdFloats.VFP8, Int32(0))
            v = WeirdFloats.convert_sr(v, A[1], rand(Int32), Int32(0))
