@@ -1,0 +1,4 @@
+name = "WeirdFloats"
+uuid = "22bc687c-8888-4d88-85be-68b316bf13b6"
+authors = ["Valentin Churavy <v.churavy@gmail.com>"]
+version = "0.1.0"
