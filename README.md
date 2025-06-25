@@ -69,12 +69,12 @@ julia> using AMDGPU, WeirdFloats, DLFP8Types
 
 julia> A = AMDGPU.rand(Float32, 4)
 4-element ROCArray{Float32, 1, AMDGPU.Runtime.Mem.HIPBuffer}:
- 0.14708285
- 0.2024808
- 0.42030886
- 0.1691257
+ 0.3193292
+ 0.007127027
+ 0.77079546
+ 0.036067273
 
-julia> B = AMDGPU.zeros(Int32, 1)
+julia> B = AMDGPU.zeros(Int32, 1); C = AMDGPU.zeros(Int32, 1); D = AMDGPU.zeros(Int32, 1)
 1-element ROCArray{Int32, 1, AMDGPU.Runtime.Mem.HIPBuffer}:
  0
 ```
@@ -82,15 +82,15 @@ julia> B = AMDGPU.zeros(Int32, 1)
 With deterministic rounding we expect to have
 
 ```julia-repl
-julia> Float8_E4M3FNUZ.(Float32[0.14708285, 0.2024808, 0.42030886, 0.1691257])
+julia> Float8_E4M3FNUZ.(Array(A))
 4-element Vector{Float8_E4M3FNUZ}:
- 0.140625
- 0.203125
- 0.40625
- 0.171875
+ 0.3125
+ 0.0068359375
+ 0.75
+ 0.03515625
 ```
 
-Let's define a kernel which converts the elements of `A` to FP8 with [stochastic rounding](https://doi.org/10.1098/rsos.211631) by using `WeirdFloats.convert_sr`, and run the kernel multiple times:
+Let's define a kernel which converts the elements of `A` to FP8 with [stochastic rounding](https://doi.org/10.1098/rsos.211631) by using `WeirdFloats.convert_sr`, and run the kernel multiple times, storing the result in the arrays `B`, `C`, and `D`:
 
 ```julia-repl
 julia> @inbounds function kernel_sr(A, B)
@@ -105,36 +105,39 @@ julia> @inbounds function kernel_sr(A, B)
        end
 kernel_sr (generic function with 1 method)
 
-julia> @device_code dir="fp8" @roc kernel_sr(A, B); bitstring(AMDGPU.@allowscalar B[1])
-"00101011001101010010110100101001"
+julia> @device_code dir="fp8" @roc kernel_sr(A, B); B
+1-element ROCArray{Int32, 1, AMDGPU.Runtime.Mem.HIPBuffer}:
+ 440141618
 
-julia> @device_code dir="fp8" @roc kernel_sr(A, B); bitstring(AMDGPU.@allowscalar B[1])
-"00101011001101100010110100101001"
+julia> @device_code dir="fp8" @roc kernel_sr(A, C); C
+1-element ROCArray{Int32, 1, AMDGPU.Runtime.Mem.HIPBuffer}:
+ 423364658
 
-julia> @device_code dir="fp8" @roc kernel_sr(A, B); bitstring(AMDGPU.@allowscalar B[1])
-"00101011001101100010110100101010"
+julia> @device_code dir="fp8" @roc kernel_sr(A, D); D
+1-element ROCArray{Int32, 1, AMDGPU.Runtime.Mem.HIPBuffer}:
+ 423364403
 ```
 
-The four output FP8 numbers are packed in the signle `Float32` number `B[1]`, we can unpack them to see their values:
+The four output FP8 numbers are packed in the one-element `Float32` arrays `B`, `C`, and `D`, we can unpack them to see their values:
 
 ```julia-repl
-julia> for shift in (0, 8, 16, 24); @show reinterpret(Float8_E4M3FNUZ, (0b00101011001101010010110100101001 >> shift & 0xff) % UInt8); end
-reinterpret(Float8_E4M3FNUZ, (0x2b352d29 >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.140625)
-reinterpret(Float8_E4M3FNUZ, (0x2b352d29 >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.203125)
-reinterpret(Float8_E4M3FNUZ, (0x2b352d29 >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.40625)
-reinterpret(Float8_E4M3FNUZ, (0x2b352d29 >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.171875)
+julia> for shift in (0, 8, 16, 24); @show reinterpret(Float8_E4M3FNUZ, (Array(B)[1] >> shift & 0xff) % UInt8); end
+reinterpret(Float8_E4M3FNUZ, ((Array(B))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.3125)
+reinterpret(Float8_E4M3FNUZ, ((Array(B))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.0068359375)
+reinterpret(Float8_E4M3FNUZ, ((Array(B))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.75)
+reinterpret(Float8_E4M3FNUZ, ((Array(B))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.0390625)
 
-julia> for shift in (0, 8, 16, 24); @show reinterpret(Float8_E4M3FNUZ, (0b00101011001101100010110100101001 >> shift & 0xff) % UInt8); end
-reinterpret(Float8_E4M3FNUZ, (0x2b362d29 >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.140625)
-reinterpret(Float8_E4M3FNUZ, (0x2b362d29 >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.203125)
-reinterpret(Float8_E4M3FNUZ, (0x2b362d29 >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.4375)
-reinterpret(Float8_E4M3FNUZ, (0x2b362d29 >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.171875)
+julia> for shift in (0, 8, 16, 24); @show reinterpret(Float8_E4M3FNUZ, (Array(C)[1] >> shift & 0xff) % UInt8); end
+reinterpret(Float8_E4M3FNUZ, ((Array(C))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.3125)
+reinterpret(Float8_E4M3FNUZ, ((Array(C))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.0078125)
+reinterpret(Float8_E4M3FNUZ, ((Array(C))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.75)
+reinterpret(Float8_E4M3FNUZ, ((Array(C))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.03515625)
 
-julia> for shift in (0, 8, 16, 24); @show reinterpret(Float8_E4M3FNUZ, (0b00101011001101100010110100101010 >> shift & 0xff) % UInt8); end
-reinterpret(Float8_E4M3FNUZ, (0x2b362d2a >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.15625)
-reinterpret(Float8_E4M3FNUZ, (0x2b362d2a >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.203125)
-reinterpret(Float8_E4M3FNUZ, (0x2b362d2a >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.4375)
-reinterpret(Float8_E4M3FNUZ, (0x2b362d2a >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.171875)
+julia> for shift in (0, 8, 16, 24); @show reinterpret(Float8_E4M3FNUZ, (Array(D)[1] >> shift & 0xff) % UInt8); end
+reinterpret(Float8_E4M3FNUZ, ((Array(D))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.34375)
+reinterpret(Float8_E4M3FNUZ, ((Array(D))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.0068359375)
+reinterpret(Float8_E4M3FNUZ, ((Array(D))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.75)
+reinterpret(Float8_E4M3FNUZ, ((Array(D))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.03515625)
 ```
 
 We can see that the elements of `A` have not been downcast deterministically to FP8 according to the expected result shown above, but in some cases they were rounded to the other adject number in FP8.
