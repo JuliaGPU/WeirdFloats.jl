@@ -121,23 +121,23 @@ julia> @device_code dir="fp8" @roc kernel_sr(A, D); D
 The four output FP8 numbers are packed in the one-element `Float32` arrays `B`, `C`, and `D`, we can unpack them to see their values:
 
 ```julia-repl
-julia> for shift in (0, 8, 16, 24); @show reinterpret(Float8_E4M3FNUZ, (Array(B)[1] >> shift & 0xff) % UInt8); end
-reinterpret(Float8_E4M3FNUZ, ((Array(B))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.3125)
-reinterpret(Float8_E4M3FNUZ, ((Array(B))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.0068359375)
-reinterpret(Float8_E4M3FNUZ, ((Array(B))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.75)
-reinterpret(Float8_E4M3FNUZ, ((Array(B))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.0390625)
+julia> for shift in (0, 8, 16, 24); println(reinterpret(Float8_E4M3FNUZ, (Array(B)[1] >> shift & 0xff) % UInt8)); end
+0.3125
+0.0068359375
+0.75
+0.0390625
 
-julia> for shift in (0, 8, 16, 24); @show reinterpret(Float8_E4M3FNUZ, (Array(C)[1] >> shift & 0xff) % UInt8); end
-reinterpret(Float8_E4M3FNUZ, ((Array(C))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.3125)
-reinterpret(Float8_E4M3FNUZ, ((Array(C))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.0078125)
-reinterpret(Float8_E4M3FNUZ, ((Array(C))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.75)
-reinterpret(Float8_E4M3FNUZ, ((Array(C))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.03515625)
+julia> for shift in (0, 8, 16, 24); println(reinterpret(Float8_E4M3FNUZ, (Array(C)[1] >> shift & 0xff) % UInt8)); end
+0.3125
+0.0078125
+0.75
+0.03515625
 
-julia> for shift in (0, 8, 16, 24); @show reinterpret(Float8_E4M3FNUZ, (Array(D)[1] >> shift & 0xff) % UInt8); end
-reinterpret(Float8_E4M3FNUZ, ((Array(D))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.34375)
-reinterpret(Float8_E4M3FNUZ, ((Array(D))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.0068359375)
-reinterpret(Float8_E4M3FNUZ, ((Array(D))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.75)
-reinterpret(Float8_E4M3FNUZ, ((Array(D))[1] >> shift & 0xff) % UInt8) = Float8_E4M3FNUZ(0.03515625)
+julia> for shift in (0, 8, 16, 24); println(reinterpret(Float8_E4M3FNUZ, (Array(D)[1] >> shift & 0xff) % UInt8)); end
+0.34375
+0.0068359375
+0.75
+0.03515625
 ```
 
 We can see that the elements of `A` have not been downcast deterministically to FP8 according to the expected result shown above, but in some cases they were rounded to the other adject number in FP8.
